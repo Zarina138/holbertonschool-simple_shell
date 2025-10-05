@@ -27,7 +27,7 @@ char *prompt_and_read(void)
  * split_line - split a line into arguments (tokens)
  * @line: the input string
  *
- * Return: NULL-terminated array of tokens (points into line)
+ * Return: NULL-terminated array of tokens
  */
 char **split_line(char *line)
 {
@@ -69,7 +69,9 @@ int execute_cmd(char **argv_exec)
 	cmd_path = find_command(argv_exec[0], environ);
 	if (!cmd_path)
 	{
-		dprintf(STDERR_FILENO, "./hsh: %s: not found\n", argv_exec[0]);
+		write(STDERR_FILENO, "./hsh: 1: ", 10);
+		write(STDERR_FILENO, argv_exec[0], strlen(argv_exec[0]));
+		write(STDERR_FILENO, ": not found\n", 12);
 		return (127);
 	}
 
@@ -84,9 +86,11 @@ int execute_cmd(char **argv_exec)
 	if (pid == 0)
 	{
 		execve(cmd_path, argv_exec, environ);
-		perror(argv_exec[0]);
+		write(STDERR_FILENO, "./hsh: 1: ", 10);
+		write(STDERR_FILENO, argv_exec[0], strlen(argv_exec[0]));
+		write(STDERR_FILENO, ": not found\n", 12);
 		free(cmd_path);
-		_exit(EXIT_FAILURE);
+		_exit(127);
 	}
 	else
 		waitpid(pid, &status, 0);

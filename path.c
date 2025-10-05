@@ -9,46 +9,48 @@
  */
 char *find_command(char *cmd, char **envp)
 {
-	char *path_env = NULL, *path_copy, *dir;
-	char full_path[1024];
-	char *result = NULL;
-	int i = 0;
+    char *path_env = NULL, *path_copy, *dir;
+    char full_path[1024];
+    char *result = NULL;
+    int i = 0;
 
-	/* Əgər komanda artıq tam yoldursa (məsələn /bin/ls və ya ./a.out) */
-	if (access(cmd, X_OK) == 0)
-		return (strdup(cmd));
+    /* PATH-i tapmaq */
+    while (envp && envp[i])
+    {
+        if (strncmp(envp[i], "PATH=", 5) == 0)
+        {
+            path_env = envp[i] + 5;
+            break;
+        }
+        i++;
+    }
 
-	/* PATH dəyişənini envp massivindən tapırıq */
-	while (envp[i])
-	{
-		if (strncmp(envp[i], "PATH=", 5) == 0)
-		{
-			path_env = envp[i] + 5;
-			break;
-		}
-		i++;
-	}
+    /* Əgər PATH boşdursa və ya tapılmadısa */
+    if (!path_env || strlen(path_env) == 0)
+    {
+        if (access(cmd, X_OK) == 0)
+            return (strdup(cmd));
+        return (NULL);
+    }
 
-	if (!path_env)
-		return (NULL);
+    path_copy = strdup(path_env);
+    if (!path_copy)
+        return (NULL);
 
-	path_copy = strdup(path_env);
-	if (!path_copy)
-		return (NULL);
+    dir = strtok(path_copy, ":");
+    while (dir)
+    {
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
 
-	dir = strtok(path_copy, ":");
-	while (dir)
-	{
-		snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
-		if (access(full_path, X_OK) == 0)
-		{
-			result = strdup(full_path);
-			break;
-		}
-		dir = strtok(NULL, ":");
-	}
+        if (access(full_path, X_OK) == 0)
+        {
+            result = strdup(full_path);
+            break;
+        }
+        dir = strtok(NULL, ":");
+    }
 
-	free(path_copy);
-	return (result);
+    free(path_copy);
+    return (result);
 }
 
