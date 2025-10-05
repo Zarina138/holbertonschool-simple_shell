@@ -1,9 +1,6 @@
 #include "shell.h"
 
-/**
- * prompt_and_read - print prompt and read a line from stdin
- * Return: pointer to the line (caller must free) or NULL on EOF/error
- */
+/* read a line from stdin */
 char *prompt_and_read(void)
 {
 	char *line = NULL;
@@ -22,44 +19,36 @@ char *prompt_and_read(void)
 	return (line);
 }
 
-/**
- * split_line - split input line into tokens (by space/tab)
- * @line: input line
- * Return: NULL-terminated array of tokens, or NULL on error
- */
+/* split line into arguments */
 char **split_line(char *line)
 {
-	char **tokens = NULL;
+	char **argv = NULL;
 	char *token;
 	size_t bufsize = 64, i = 0;
 
-	tokens = malloc(sizeof(char *) * bufsize);
-	if (!tokens)
+	argv = malloc(sizeof(char *) * bufsize);
+	if (!argv)
 		return (NULL);
 
 	token = strtok(line, " \t\r\n");
 	while (token)
 	{
-		tokens[i++] = token;
+		argv[i++] = token;
 		if (i >= bufsize)
 			break;
 		token = strtok(NULL, " \t\r\n");
 	}
-	tokens[i] = NULL;
-	return (tokens);
+	argv[i] = NULL;
+	return (argv);
 }
 
-/**
- * execute_cmd - fork and execve the given command with args
- * @argv_exec: array of arguments (argv[0] = command)
- * Return: 0 on success, -1 on failure
- */
+/* fork and execve the command with arguments */
 int execute_cmd(char **argv_exec)
 {
 	pid_t pid;
 	int status;
 
-	if (argv_exec == NULL || argv_exec[0] == NULL)
+	if (!argv_exec || !argv_exec[0])
 		return (-1);
 
 	pid = fork();
@@ -81,10 +70,6 @@ int execute_cmd(char **argv_exec)
 	return (0);
 }
 
-/**
- * main - entry point for simple shell
- * Return: EXIT_SUCCESS
- */
 int main(void)
 {
 	char *line = NULL;
@@ -93,7 +78,7 @@ int main(void)
 	while (1)
 	{
 		line = prompt_and_read();
-		if (line == NULL)
+		if (!line)
 		{
 			if (isatty(STDIN_FILENO))
 				write(STDOUT_FILENO, "\n", 1);
@@ -109,4 +94,3 @@ int main(void)
 	}
 	return (EXIT_SUCCESS);
 }
-
