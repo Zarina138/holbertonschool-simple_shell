@@ -19,63 +19,44 @@ char *prompt_and_read(void)
 		free(line);
 		return (NULL);
 	}
-
 	return (line);
 }
 
 /**
- * parse_line - split line into words (program + arguments)
+ * split_line - splits a line into tokens (space/tab separated)
  * @line: input line
- * Return: NULL-terminated array of tokens, or NULL if empty
+ * Return: NULL-terminated array of args (caller must free)
  */
-char **parse_line(char *line)
+char **split_line(char *line)
 {
-	char **argv = NULL;
-	char *token;
-	int bufsize = 8, i = 0;
-
-	if (line == NULL)
-		return (NULL);
-
-	argv = malloc(sizeof(char *) * bufsize);
-	if (!argv)
-		return (NULL);
+	char *token, **argv = NULL;
+	size_t size = 0, i = 0;
 
 	token = strtok(line, " \t\n");
-	while (token != NULL)
+	while (token)
 	{
+		argv = realloc(argv, sizeof(char *) * (i + 2));
+		if (!argv)
+			return (NULL);
 		argv[i++] = token;
-		if (i >= bufsize)
-		{
-			bufsize += 8;
-			argv = realloc(argv, sizeof(char *) * bufsize);
-			if (!argv)
-				return (NULL);
-		}
 		token = strtok(NULL, " \t\n");
 	}
-	argv[i] = NULL;
-
-	if (i == 0)
-	{
-		free(argv);
-		return (NULL);
-	}
-
+	if (argv)
+		argv[i] = NULL;
 	return (argv);
 }
 
 /**
- * execute_cmd - fork and execve the given command (with args)
- * @argv: argument vector
+ * execute_cmd - fork and execve the given command with args
+ * @argv_exec: command and args
  * Return: 0 on success, -1 on failure
  */
-int execute_cmd(char **argv)
+int execute_cmd(char **argv_exec)
 {
 	pid_t pid;
 	int status;
 
-	if (argv == NULL || argv[0] == NULL)
+	if (!argv_exec || !argv_exec[0])
 		return (-1);
 
 	pid = fork();
@@ -87,16 +68,14 @@ int execute_cmd(char **argv)
 
 	if (pid == 0)
 	{
-		if (execve(argv[0], argv, environ) == -1)
-		{
-			dprintf(STDERR_FILENO, "simple_shell: %s: %s\n",
-				argv[0], strerror(errno));
-			_exit(EXIT_FAILURE);
-		}
+		execve(argv_exec[0], argv_exec, environ);
+		perror(argv_exec[0]);
+		_exit(EXIT_FAILURE);
 	}
 	else
+	{
 		waitpid(pid, &status, 0);
-
+	}
 	return (0);
 }
 
@@ -112,21 +91,16 @@ int main(void)
 	while (1)
 	{
 		line = prompt_and_read();
-		if (line == NULL)
+		if (!line)
 		{
 			if (isatty(STDIN_FILENO))
 				write(STDOUT_FILENO, "\n", 1);
 			break;
 		}
 
-		argv = parse_line(line);
-		if (argv == NULL)
-		{
-			free(line);
-			continue;
-		}
-
-		execute_cmd(argv);
+		argv = split_line(line);
+		if (argv && argv[0])
+			execute_cmd(argv);
 
 		free(argv);
 		free(line);
