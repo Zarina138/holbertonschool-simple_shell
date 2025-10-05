@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-extern char **environ;
-
+char *find_command(char *command, char **envp);
 #endif
 
