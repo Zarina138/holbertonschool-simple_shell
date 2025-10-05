@@ -10,7 +10,6 @@ char *prompt_and_read(void)
 	size_t len = 0;
 	ssize_t nread;
 
-	/* Print prompt */
 	if (isatty(STDIN_FILENO))
 		write(STDOUT_FILENO, "$ ", 2);
 
@@ -25,54 +24,59 @@ char *prompt_and_read(void)
 }
 
 /**
- * parse_line - trim newline and spaces; only single-word commands allowed
+ * parse_line - split line into words (program + arguments)
  * @line: input line
- * Return: pointer to cleaned command or NULL if empty/invalid
+ * Return: NULL-terminated array of tokens, or NULL if empty
  */
-char *parse_line(char *line)
+char **parse_line(char *line)
 {
-	char *start, *end;
+	char **argv = NULL;
+	char *token;
+	int bufsize = 8, i = 0;
 
 	if (line == NULL)
 		return (NULL);
 
-	end = line + strlen(line) - 1;
-	while (end >= line && (*end == '\n' || *end == '\r'))
-		*end-- = '\0';
-
-	start = line;
-	while (*start == ' ' || *start == '\t')
-		start++;
-
-	if (*start == '\0')
+	argv = malloc(sizeof(char *) * bufsize);
+	if (!argv)
 		return (NULL);
 
-	end = start + strlen(start) - 1;
-	while (end > start && (*end == ' ' || *end == '\t'))
-		*end-- = '\0';
+	token = strtok(line, " \t\n");
+	while (token != NULL)
+	{
+		argv[i++] = token;
+		if (i >= bufsize)
+		{
+			bufsize += 8;
+			argv = realloc(argv, sizeof(char *) * bufsize);
+			if (!argv)
+				return (NULL);
+		}
+		token = strtok(NULL, " \t\n");
+	}
+	argv[i] = NULL;
 
-	if (strchr(start, ' ') || strchr(start, '\t'))
+	if (i == 0)
+	{
+		free(argv);
 		return (NULL);
+	}
 
-	return (start);
+	return (argv);
 }
 
 /**
- * execute_cmd - fork and execve the given command (no args)
- * @cmd: command path (single word)
+ * execute_cmd - fork and execve the given command (with args)
+ * @argv: argument vector
  * Return: 0 on success, -1 on failure
  */
-int execute_cmd(char *cmd)
+int execute_cmd(char **argv)
 {
 	pid_t pid;
 	int status;
-	char *argv_exec[2];
 
-	if (cmd == NULL)
+	if (argv == NULL || argv[0] == NULL)
 		return (-1);
-
-	argv_exec[0] = cmd;
-	argv_exec[1] = NULL;
 
 	pid = fork();
 	if (pid == -1)
@@ -83,19 +87,15 @@ int execute_cmd(char *cmd)
 
 	if (pid == 0)
 	{
-		/* child process */
-		if (execve(cmd, argv_exec, environ) == -1)
+		if (execve(argv[0], argv, environ) == -1)
 		{
 			dprintf(STDERR_FILENO, "simple_shell: %s: %s\n",
-				cmd, strerror(errno));
+				argv[0], strerror(errno));
 			_exit(EXIT_FAILURE);
 		}
 	}
 	else
-	{
-		/* parent process */
 		waitpid(pid, &status, 0);
-	}
 
 	return (0);
 }
@@ -107,7 +107,7 @@ int execute_cmd(char *cmd)
 int main(void)
 {
 	char *line = NULL;
-	char *cmd = NULL;
+	char **argv = NULL;
 
 	while (1)
 	{
@@ -119,14 +119,16 @@ int main(void)
 			break;
 		}
 
-		cmd = parse_line(line);
-		if (cmd == NULL)
+		argv = parse_line(line);
+		if (argv == NULL)
 		{
 			free(line);
 			continue;
 		}
 
-		execute_cmd(cmd);
+		execute_cmd(argv);
+
+		free(argv);
 		free(line);
 	}
 
