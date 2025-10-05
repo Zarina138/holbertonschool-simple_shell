@@ -1,0 +1,20 @@
+#include <stdio.h>
+
+/**
+ * main - Entry point of the program
+ *
+ * Description: This program adds two integers and prints the result.
+ * Return: Always 0 (Success)
+ */
+int main(void)
+{
+	int a, b, sum;
+
+	a = 5;
+	b = 7;
+	sum = a + b;
+
+	printf("The sum of %d and %d is %d\n", a, b, sum);
+
+	return (0);
+}
