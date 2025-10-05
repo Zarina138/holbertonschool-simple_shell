@@ -52,14 +52,6 @@ char **split_line(char *line)
 }
 
 /**
- * find_command - locate a command using PATH
- * @cmd: command name
- *
- * Return: malloc'd string with full path if found, or NULL
- */
-
-
-/**
  * execute_cmd - execute a command using fork and execve
  * @argv_exec: argument vector
  *
@@ -74,10 +66,10 @@ int execute_cmd(char **argv_exec)
 	if (!argv_exec || !argv_exec[0])
 		return (-1);
 
-	cmd_path = find_command(argv_exec[0]);
+	cmd_path = find_command(argv_exec[0], environ);
 	if (!cmd_path)
 	{
-		dprintf(STDERR_FILENO, "%s: command not found\n", argv_exec[0]);
+		dprintf(STDERR_FILENO, "./hsh: %s: not found\n", argv_exec[0]);
 		return (127);
 	}
 
