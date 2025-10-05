@@ -1,37 +1,44 @@
 #include "shell.h"
-
 /**
- * find_command - find full path of a command using PATH env
+ * find_command - locate a command using PATH
  * @cmd: command name
- * Return: full path (malloced) or NULL if not found
+ *
+ * Return: malloc'd string with full path if found, or NULL
  */
 char *find_command(char *cmd)
 {
-	char *path, *path_copy, *dir;
-	char full_path[1024];
-	int len;
+    if (!cmd)
+        return NULL;
 
-	if (access(cmd, X_OK) == 0)
-		return strdup(cmd);
+    /* absolute or relative path check */
+    if (cmd[0] == '/' || cmd[0] == '.') {
+        if (access(cmd, X_OK) == 0)
+            return strdup(cmd);
+        return NULL;
+    }
 
-	path = getenv("PATH");
-	if (!path)
-		return NULL;
+    /* check in PATH */
+    char *path_env = getenv("PATH");
+    if (!path_env)
+        return NULL;
 
-	path_copy = strdup(path);
-	dir = strtok(path_copy, ":");
+    char *path_copy = strdup(path_env);
+    if (!path_copy)
+        return NULL;
 
-	while (dir)
-	{
-		len = snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
-		if (len < (int)sizeof(full_path) && access(full_path, X_OK) == 0)
-		{
-			free(path_copy);
-			return strdup(full_path);
-		}
-		dir = strtok(NULL, ":");
-	}
-	free(path_copy);
-	return NULL;
+    char *dir = strtok(path_copy, ":");
+    char full_path[1024];
+
+    while (dir != NULL) {
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
+        if (access(full_path, X_OK) == 0) {
+            free(path_copy);
+            return strdup(full_path);
+        }
+        dir = strtok(NULL, ":");
+    }
+
+    free(path_copy);
+    return NULL;
 }
 
