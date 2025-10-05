@@ -57,53 +57,7 @@ char **split_line(char *line)
  *
  * Return: malloc'd string with full path if found, or NULL
  */
-char *find_command(char *cmd)
-{
-	char *path_env, *path_dup, *dir;
-	char *full_path;
-	size_t len;
 
-	if (!cmd)
-		return (NULL);
-
-	/* direct path check */
-	if (strchr(cmd, '/'))
-	{
-		if (access(cmd, X_OK) == 0)
-			return (strdup(cmd));
-		return (NULL);
-	}
-
-	path_env = getenv("PATH");
-	if (!path_env)
-		return (NULL);
-
-	path_dup = strdup(path_env);
-	if (!path_dup)
-		return (NULL);
-
-	dir = strtok(path_dup, ":");
-	while (dir)
-	{
-		len = strlen(dir) + strlen(cmd) + 2;
-		full_path = malloc(len);
-		if (!full_path)
-		{
-			free(path_dup);
-			return (NULL);
-		}
-		snprintf(full_path, len, "%s/%s", dir, cmd);
-		if (access(full_path, X_OK) == 0)
-		{
-			free(path_dup);
-			return (full_path);
-		}
-		free(full_path);
-		dir = strtok(NULL, ":");
-	}
-	free(path_dup);
-	return (NULL);
-}
 
 /**
  * execute_cmd - execute a command using fork and execve
