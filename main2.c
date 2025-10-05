@@ -42,32 +42,93 @@ char **split_line(char *line)
 	return (argv);
 }
 
+/* find command in PATH */
+char *find_command(char *cmd)
+{
+	char *path_env, *path_dup, *dir;
+	char *full_path;
+	size_t len;
+
+	if (!cmd)
+		return NULL;
+
+	/* if cmd contains '/', assume it's a path */
+	if (strchr(cmd, '/'))
+	{
+		if (access(cmd, X_OK) == 0)
+			return strdup(cmd);
+		return NULL;
+	}
+
+	path_env = getenv("PATH");
+	if (!path_env)
+		return NULL;
+
+	path_dup = strdup(path_env);
+	if (!path_dup)
+		return NULL;
+
+	dir = strtok(path_dup, ":");
+	while (dir)
+	{
+		len = strlen(dir) + 1 + strlen(cmd) + 1;
+		full_path = malloc(len);
+		if (!full_path)
+		{
+			free(path_dup);
+			return NULL;
+		}
+		snprintf(full_path, len, "%s/%s", dir, cmd);
+
+		if (access(full_path, X_OK) == 0)
+		{
+			free(path_dup);
+			return full_path;
+		}
+		free(full_path);
+		dir = strtok(NULL, ":");
+	}
+	free(path_dup);
+	return NULL;
+}
+
 /* fork and execve the command with arguments */
 int execute_cmd(char **argv_exec)
 {
 	pid_t pid;
 	int status;
+	char *cmd_path;
 
 	if (!argv_exec || !argv_exec[0])
 		return (-1);
+
+	cmd_path = find_command(argv_exec[0]);
+	if (!cmd_path)
+	{
+		dprintf(STDERR_FILENO, "%s: command not found\n", argv_exec[0]);
+		return (-1);
+	}
 
 	pid = fork();
 	if (pid == -1)
 	{
 		perror("fork");
+		free(cmd_path);
 		return (-1);
 	}
 
 	if (pid == 0)
 	{
-		execve(argv_exec[0], argv_exec, environ);
-		dprintf(STDERR_FILENO, "./hsh: %s: not found\n", argv_exec[0]);
+		execve(cmd_path, argv_exec, environ);
+		dprintf(STDERR_FILENO, "%s: execution failed\n", argv_exec[0]);
+		free(cmd_path);
 		_exit(EXIT_FAILURE);
 	}
 	else
 		waitpid(pid, &status, 0);
 
-	return (0);
+	free(cmd_path);
+	return 0;
 }
 
 int main(void)
@@ -94,3 +155,4 @@ int main(void)
 	}
 	return (EXIT_SUCCESS);
 }
+
