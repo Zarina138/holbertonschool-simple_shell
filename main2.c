@@ -1,109 +1,87 @@
-#include "main.h"
+#include "shell.h"
+if (cmd == NULL)
+return (-1);
 
-int main(int argc, char **argv, char **envp)
+
+argv_exec[0] = cmd;
+argv_exec[1] = NULL;
+
+
+pid = fork();
+if (pid == -1)
 {
-    char *line;
-    size_t len;
-    char *args[100];
-    int line_no;
-    int status;
-    int i;
-    char *token;
-    char *fullpath;
-    pid_t pid;
-    int wstatus;
+perror("fork");
+return (-1);
+}
 
-    (void)argc;
 
-    line = NULL;
-    len = 0;
-    line_no = 0;
-    status = 0;
+if (pid == 0)
+{
+/* child */
+if (execve(cmd, argv_exec, environ) == -1)
+{
+/* execve failed */
+dprintf(STDERR_FILENO, "simple_shell: %s: %s\n", cmd, strerror(errno));
+_exit(EXIT_FAILURE);
+}
+}
+else
+{
+/* parent */
+if (waitpid(pid, &status, 0) == -1)
+{
+perror("waitpid");
+return (-1);
+}
+}
 
-    while (1)
-    {
-        line_no++;
-        if (isatty(STDIN_FILENO))
-            printf("($) ");
 
-        if (getline(&line, &len, stdin) == -1)
-        {
-            if (isatty(STDIN_FILENO))
-                putchar('\n');
-            break;
-        }
+return (0);
+}
 
-        line[strcspn(line, "\n")] = 0;
 
-        if (line[0] == '\0')
-            continue;
+/**
+* main - entry point for the simple shell
+* Return: EXIT_SUCCESS or EXIT_FAILURE
+*/
+int main(void)
+{
+char *line = NULL;
+char *cmd = NULL;
 
-        i = 0;
-        token = strtok(line, " \t");
-        while (token && i < 99)
-        {
-            args[i++] = token;
-            token = strtok(NULL, " \t");
-        }
-        args[i] = NULL;
 
-        if (!args[0])
-            continue;
+while (1)
+{
+line = prompt_and_read();
+if (line == NULL)
+{
+/* EOF or read error: exit cleanly */
+if (isatty(STDIN_FILENO))
+write(STDOUT_FILENO, "\n", 1);
+break;
+}
 
-        
-        if (strcmp(args[0], "exit") == 0)
-        {
-            free(line);
-            return status;
-        }
 
-        
-        if (strcmp(args[0], "env") == 0)
-        {
-            int j = 0;
-            while (envp[j])
-            {
-                printf("%s\n", envp[j]);
-                j++;
-            }
-            continue;
-        }
+cmd = parse_line(line);
 
-        fullpath = find_command(args[0], envp);
-        if (!fullpath)
-        {
-            fprintf(stderr, "%s: %d: %s: not found\n", argv[0], line_no, args[0]);
-            status = 127;
-            continue;
-        }
 
-        pid = fork();
-        if (pid == -1)
-        {
-            perror("fork");
-            free(fullpath);
-            free(line);
-            exit(1);
-        }
+if (cmd == NULL)
+{
+/* empty line or multi-word (not supported) */
+free(line);
+continue;
+}
 
-        if (pid == 0)
-        {
-            execve(fullpath, args, envp);
-            perror("execve");
-            exit(1);
-        }
-        else
-        {
-            waitpid(pid, &wstatus, 0);
-            if (WIFEXITED(wstatus))
-                status = WEXITSTATUS(wstatus);
-            else
-                status = 1;
-        }
 
-        free(fullpath);
-    }
+if (execute_cmd(cmd) == -1)
+{
+/* error printed by execute_cmd */
+}
 
-    free(line);
-    return status;
+
+free(line);
+}
+
+
+return (EXIT_SUCCESS);
 }
