@@ -12,16 +12,14 @@ char *find_command(char *cmd)
     char full_path[1024];
     char *result = NULL;
 
-    /* Əgər komanda absolute və ya relative yoldursa (məs: ./prog və ya /bin/ls) */
+    /* Əgər komanda absolute və ya relative yoldursa */
     if (access(cmd, X_OK) == 0)
         return (strdup(cmd));
 
-    /* PATH dəyişənini al */
     path_env = getenv("PATH");
-    if (!path_env)
+    if (!path_env || strlen(path_env) == 0)
         return (NULL);
 
-    /* Kopya yarad (çünki strtok orijinal sətri dəyişir) */
     path_copy = strdup(path_env);
     if (!path_copy)
         return (NULL);
@@ -29,20 +27,20 @@ char *find_command(char *cmd)
     dir = strtok(path_copy, ":");
     while (dir)
     {
-        /* Tam yol qur: dir + "/" + cmd */
-        snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
+        if (dir[strlen(dir) - 1] == '/')
+            snprintf(full_path, sizeof(full_path), "%s%s", dir, cmd);
+        else
+            snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
 
-        /* Əgər fayl mövcuddursa və icra edilə bilirsə */
         if (access(full_path, X_OK) == 0)
         {
-            result = strdup(full_path); /* malloc-lanmış nüsxə */
+            result = strdup(full_path);
             break;
         }
-
         dir = strtok(NULL, ":");
     }
 
     free(path_copy);
-    return (result); /* Tapılmadısa NULL olacaq */
+    return (result);
 }
 
