@@ -13,6 +13,7 @@ char *prompt_and_read(void);
 char **split_line(char *line);
 int execute_cmd(char **argv_exec);
 char *find_command(char *cmd, char **envp);
+extern char **environ;
 
 #endif
 
