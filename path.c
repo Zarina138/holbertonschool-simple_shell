@@ -1,29 +1,36 @@
 #include "shell.h"
 
 /**
- * find_command - find the full path of a command in PATH
+ * find_command - find executable full path
  * @cmd: command name
- *
- * Return: malloc'd string with full path or NULL if not found
+ * @envp: environment variables
+ * Return: full path string or NULL if not found
  */
-char *find_command(char *cmd)
+char *find_command(char *cmd, char **envp)
 {
-    char *path_env, *path_copy, *dir, *fullpath;
+    char *path_env = NULL, *path_copy, *dir, *fullpath;
+    int i;
 
     if (!cmd)
         return (NULL);
 
-    /* If cmd already includes '/' check directly */
-    if (strchr(cmd, '/'))
+    /* find PATH in envp */
+    for (i = 0; envp[i]; i++)
+    {
+        if (strncmp(envp[i], "PATH=", 5) == 0)
+        {
+            path_env = envp[i] + 5;
+            break;
+        }
+    }
+
+    /* if no PATH or cmd has '/' */
+    if (!path_env || strchr(cmd, '/'))
     {
         if (access(cmd, X_OK) == 0)
             return (strdup(cmd));
         return (NULL);
     }
-
-    path_env = getenv("PATH");
-    if (!path_env)
-        return (NULL);
 
     path_copy = strdup(path_env);
     if (!path_copy)
@@ -40,7 +47,6 @@ char *find_command(char *cmd)
         }
 
         sprintf(fullpath, "%s/%s", dir, cmd);
-
         if (access(fullpath, X_OK) == 0)
         {
             free(path_copy);

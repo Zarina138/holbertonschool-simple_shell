@@ -13,7 +13,7 @@ extern char **environ;
 
 char *prompt_and_read(void);
 char **split_line(char *line);
-char *find_command(char *cmd);
+char *find_command(char *cmd, char **envp);
 int execute_cmd(char **argv_exec);
 
 #endif /* SHELL_H */
