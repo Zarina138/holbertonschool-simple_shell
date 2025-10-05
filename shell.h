@@ -16,7 +16,8 @@ extern char **environ;
 
 char *prompt_and_read(void);
 char *parse_line(char *line);
-int execute_cmd(char *cmd);
+int execute_cmd(char **argv_exec);
+
 
 
 #endif /* SHELL_H */
