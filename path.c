@@ -11,7 +11,7 @@ extern char **environ;
  * @command: Command to locate
  * Return: Full path (malloc’d) if found, otherwise NULL
  */
-char *find_command(char *command)
+char *find_command_in_path(char *command)
 {
     char *path_env = NULL;
     char *path_copy, *dir;
