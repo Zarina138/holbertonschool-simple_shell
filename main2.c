@@ -1,115 +1,137 @@
 #include "shell.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
 
 /**
- * main - Simple shell program
- * @argc: Argument count
- * @argv: Argument vector
- * @envp: Environment variables (unused)
- * Return: Exit status
+ * main - entry point
+ * Return: 0 on success
  */
-int main(int argc, char **argv, char **envp)
+int main(void)
 {
-    char *line = NULL;
-    size_t len = 0;
-    char *args[100];
-    int line_no = 0;
-    int status = 0;
-    char *token, *fullpath;
-    pid_t pid;
-    int wstatus;
+	return (prompt_loop());
+}
 
-    (void)argc;
-    (void)envp;
+/**
+ * prompt_loop - handles input loop
+ * Return: 0 on success
+ */
+int prompt_loop(void)
+{
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	char **args;
+	int status = 0;
 
-    while (1)
-    {
-        line_no++;
-        if (isatty(STDIN_FILENO))
-            printf("($) ");
+	while (1)
+	{
+		if (isatty(STDIN_FILENO))
+			write(STDOUT_FILENO, ":) ", 3);
 
-        if (getline(&line, &len, stdin) == -1)
-        {
-            if (isatty(STDIN_FILENO))
-                putchar('\n');
-            break;
-        }
+		read = getline(&line, &len, stdin);
+		if (read == -1)
+		{
+			if (feof(stdin))
+				write(STDOUT_FILENO, "\n", 1);
+			break;
+		}
 
-        line[strcspn(line, "\n")] = 0;
+		args = split_line(line);
+		if (!args || !args[0])
+		{
+			free(args);
+			continue;
+		}
 
-        if (line[0] == '\0')
-            continue;
+		if (strcmp(args[0], "exit") == 0)
+		{
+			free(args);
+			break;
+		}
 
-        /* Tokenize input */
-        int i = 0;
-        token = strtok(line, " \t");
-        while (token && i < 99)
-        {
-            args[i++] = token;
-            token = strtok(NULL, " \t");
-        }
-        args[i] = NULL;
+		if (strcmp(args[0], "cd") == 0)
+		{
+			if (args[1] == NULL)
+				args[1] = getenv("HOME");
+			if (chdir(args[1]) == -1)
+				perror("cd");
+			free(args);
+			continue;
+		}
 
-        if (!args[0])
-            continue;
+		status = execute_command(args);
+		free(args);
+		(void)status;
+	}
 
-        /* Built-in: exit */
-        if (strcmp(args[0], "exit") == 0)
-        {
-            free(line);
-            return status;
-        }
+	free(line);
+	return (0);
+}
 
-        /* Built-in: env */
-        if (strcmp(args[0], "env") == 0)
-        {
-            for (int j = 0; environ[j]; j++)
-                printf("%s\n", environ[j]);
-            continue;
-        }
+/**
+ * split_line - tokenizes a string into arguments
+ * @line: command line input
+ *
+ * Return: pointer to array of tokens
+ */
+char **split_line(char *line)
+{
+	int bufsize = 64, pos = 0;
+	char **tokens = malloc(bufsize * sizeof(char *));
+	char *token;
 
-        /* Find command in PATH */
-        fullpath = find_command(args[0]);
-        if (!fullpath)
-        {
-            fprintf(stderr, "%s: %d: %s: not found\n", argv[0], line_no, args[0]);
-            status = 127;
-            continue;
-        }
+	if (!tokens)
+		return (NULL);
 
-        /* Execute command */
-        pid = fork();
-        if (pid == -1)
-        {
-            perror("fork");
-            free(fullpath);
-            free(line);
-            exit(1);
-        }
+	token = strtok(line, " \t\r\n\a");
+	while (token)
+	{
+		tokens[pos++] = token;
+		if (pos >= bufsize)
+		{
+			bufsize += 64;
+			tokens = realloc(tokens, bufsize * sizeof(char *));
+			if (!tokens)
+				return (NULL);
+		}
+		token = strtok(NULL, " \t\r\n\a");
+	}
+	tokens[pos] = NULL;
+	return (tokens);
+}
 
-        if (pid == 0)
-        {
-            execve(fullpath, args, environ);
-            perror("execve");
-            exit(1);
-        }
-        else
-        {
-            waitpid(pid, &wstatus, 0);
-            if (WIFEXITED(wstatus))
-                status = WEXITSTATUS(wstatus);
-            else
-                status = 1;
-        }
+/**
+ * execute_command - handles PATH search, fork, exec, wait
+ * @args: argument vector
+ * Return: status code
+ */
+int execute_command(char **args)
+{
+	pid_t pid;
+	int status;
+	char *path;
 
-        free(fullpath);
-    }
+	path = find_command_in_path(args[0]);
+	if (!path)
+	{
+		fprintf(stderr, "%s: not found\n", args[0]);
+		return (-1);
+	}
 
-    free(line);
-    return status;
+	pid = fork();
+	if (pid == -1)
+	{
+		perror("fork");
+		free(path);
+		return (-1);
+	}
+	if (pid == 0)
+	{
+		execve(path, args, environ);
+		perror("execve");
+		free(path);
+		_exit(127);
+	}
+	free(path);
+	waitpid(pid, &status, 0);
+	return (WIFEXITED(status) ? WEXITSTATUS(status) : -1);
 }
          
