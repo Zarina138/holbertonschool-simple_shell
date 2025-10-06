@@ -1,113 +1,109 @@
 #include "shell.h"
 
-extern char **environ;
-
-char *prompt_and_read(void)
-{
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t nread;
-
-    if (isatty(STDIN_FILENO))
-        write(STDOUT_FILENO, "$ ", 2);
-
-    nread = getline(&line, &len, stdin);
-    if (nread == -1)
-    {
-        free(line);
-        return NULL;
-    }
-    return line;
-}
-
-char **split_line(char *line)
-{
-    char **argv = NULL;
-    char *token;
-    size_t bufsize = 64, i = 0;
-
-    argv = malloc(sizeof(char *) * bufsize);
-    if (!argv)
-        return NULL;
-
-    token = strtok(line, " \t\r\n");
-    while (token)
-    {
-        argv[i++] = token;
-        if (i >= bufsize)
-            break;
-        token = strtok(NULL, " \t\r\n");
-    }
-    argv[i] = NULL;
-    return argv;
-}
-
-int execute_cmd(char **argv_exec)
-{
-    pid_t pid;
-    int status;
-    char *cmd_path;
-    char err_buf[1024];
-
-    if (!argv_exec || !argv_exec[0])
-        return -1;
-
-    cmd_path = find_command(argv_exec[0]);
-    if (!cmd_path)
-    {
-        int len = snprintf(err_buf, sizeof(err_buf),
-                           "%s: not found\n", argv_exec[0]);
-        write(STDERR_FILENO, err_buf, len);
-        return 127;
-    }
-
-    pid = fork();
-    if (pid == -1)
-    {
-        perror("fork");
-        free(cmd_path);
-        return -1;
-    }
-
-    if (pid == 0)
-    {
-        execve(cmd_path, argv_exec, environ);
-        perror(argv_exec[0]);
-        free(cmd_path);
-        _exit(EXIT_FAILURE);
-    }
-    else
-    {
-        waitpid(pid, &status, 0);
-    }
-
-    free(cmd_path);
-    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-}
-
-int main(void)
+int main(int argc, char **argv, char **envp)
 {
     char *line;
-    char **argv;
+    size_t len;
+    char *args[100];
+    int line_no;
+    int status;
+    int i;
+    char *token;
+    char *fullpath;
+    pid_t pid;
+    int wstatus;
+
+    (void)argc;
+
+    line = NULL;
+    len = 0;
+    line_no = 0;
+    status = 0;
 
     while (1)
     {
-        line = prompt_and_read();
-        if (!line)
+        line_no++;
+        if (isatty(STDIN_FILENO))
+            printf("($) ");
+
+        if (getline(&line, &len, stdin) == -1)
         {
             if (isatty(STDIN_FILENO))
-                write(STDOUT_FILENO, "\n", 1);
+                putchar('\n');
             break;
         }
 
-        argv = split_line(line);
-        if (argv && argv[0])
-            execute_cmd(argv);
+        line[strcspn(line, "\n")] = 0;
 
-        free(argv);
-        free(line);
+        if (line[0] == '\0')
+            continue;
+
+        i = 0;
+        token = strtok(line, " \t");
+        while (token && i < 99)
+        {
+            args[i++] = token;
+            token = strtok(NULL, " \t");
+        }
+        args[i] = NULL;
+
+        if (!args[0])
+            continue;
+
+        /* exit built-in */
+        if (strcmp(args[0], "exit") == 0)
+        {
+            free(line);
+            return status;
+        }
+
+        /* env built-in */
+        if (strcmp(args[0], "env") == 0)
+        {
+            int j = 0;
+            while (envp[j])
+            {
+                printf("%s\n", envp[j]);
+                j++;
+            }
+            continue;
+        }
+
+        fullpath = find_command(args[0], envp);
+        if (!fullpath)
+        {
+            fprintf(stderr, "%s: %d: %s: not found\n", argv[0], line_no, args[0]);
+            status = 127;
+            continue;
+        }
+
+        pid = fork();
+        if (pid == -1)
+        {
+            perror("fork");
+            free(fullpath);
+            free(line);
+            exit(1);
+        }
+
+        if (pid == 0)
+        {
+            execve(fullpath, args, envp);
+            perror("execve");
+            exit(1);
+        }
+        else
+        {
+            waitpid(pid, &wstatus, 0);
+            if (WIFEXITED(wstatus))
+                status = WEXITSTATUS(wstatus);
+            else
+                status = 1;
+        }
+
+        free(fullpath);
     }
 
-    return EXIT_SUCCESS;
+    free(line);
+    return status;
 }
-
