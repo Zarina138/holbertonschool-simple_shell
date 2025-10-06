@@ -1,24 +1,36 @@
 #include "shell.h"
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-char *find_command(char *command, char **envp)
+extern char **environ;
+
+/**
+ * find_command - Finds the full path of a command using PATH
+ * @command: Command to locate
+ * Return: Full path (malloc’d) if found, otherwise NULL
+ */
+char *find_command(char *command)
 {
     char *path_env = NULL;
     char *path_copy, *dir;
     char *fullpath;
     int i;
 
-    for (i = 0; envp[i]; i++)
+    /* Find PATH variable in environment */
+    for (i = 0; environ[i]; i++)
     {
-        if (strncmp(envp[i], "PATH=", 5) == 0)
+        if (strncmp(environ[i], "PATH=", 5) == 0)
         {
-            path_env = envp[i] + 5;
+            path_env = environ[i] + 5;
             break;
         }
     }
 
+    /* If PATH not found or command includes '/', test it directly */
     if (!path_env || strchr(command, '/'))
     {
-        /* If command has '/' or PATH not set, return copy of command */
         fullpath = strdup(command);
         if (!fullpath)
         {
@@ -31,6 +43,7 @@ char *find_command(char *command, char **envp)
         return NULL;
     }
 
+    /* Search each directory in PATH */
     path_copy = strdup(path_env);
     if (!path_copy)
     {
@@ -48,6 +61,7 @@ char *find_command(char *command, char **envp)
             free(path_copy);
             exit(1);
         }
+
         sprintf(fullpath, "%s/%s", dir, command);
 
         if (access(fullpath, X_OK) == 0)
@@ -63,3 +77,4 @@ char *find_command(char *command, char **envp)
     free(path_copy);
     return NULL;
 }
+

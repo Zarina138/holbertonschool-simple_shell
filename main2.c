@@ -1,24 +1,30 @@
 #include "shell.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
+/**
+ * main - Simple shell program
+ * @argc: Argument count
+ * @argv: Argument vector
+ * @envp: Environment variables (unused)
+ * Return: Exit status
+ */
 int main(int argc, char **argv, char **envp)
 {
-    char *line;
-    size_t len;
+    char *line = NULL;
+    size_t len = 0;
     char *args[100];
-    int line_no;
-    int status;
-    int i;
-    char *token;
-    char *fullpath;
+    int line_no = 0;
+    int status = 0;
+    char *token, *fullpath;
     pid_t pid;
     int wstatus;
 
     (void)argc;
-
-    line = NULL;
-    len = 0;
-    line_no = 0;
-    status = 0;
+    (void)envp;
 
     while (1)
     {
@@ -38,7 +44,8 @@ int main(int argc, char **argv, char **envp)
         if (line[0] == '\0')
             continue;
 
-        i = 0;
+        /* Tokenize input */
+        int i = 0;
         token = strtok(line, " \t");
         while (token && i < 99)
         {
@@ -50,26 +57,23 @@ int main(int argc, char **argv, char **envp)
         if (!args[0])
             continue;
 
-        /* exit built-in */
+        /* Built-in: exit */
         if (strcmp(args[0], "exit") == 0)
         {
             free(line);
             return status;
         }
 
-        /* env built-in */
+        /* Built-in: env */
         if (strcmp(args[0], "env") == 0)
         {
-            int j = 0;
-            while (envp[j])
-            {
-                printf("%s\n", envp[j]);
-                j++;
-            }
+            for (int j = 0; environ[j]; j++)
+                printf("%s\n", environ[j]);
             continue;
         }
 
-        fullpath = find_command(args[0], envp);
+        /* Find command in PATH */
+        fullpath = find_command(args[0]);
         if (!fullpath)
         {
             fprintf(stderr, "%s: %d: %s: not found\n", argv[0], line_no, args[0]);
@@ -77,6 +81,7 @@ int main(int argc, char **argv, char **envp)
             continue;
         }
 
+        /* Execute command */
         pid = fork();
         if (pid == -1)
         {
@@ -88,7 +93,7 @@ int main(int argc, char **argv, char **envp)
 
         if (pid == 0)
         {
-            execve(fullpath, args, envp);
+            execve(fullpath, args, environ);
             perror("execve");
             exit(1);
         }
@@ -107,3 +112,4 @@ int main(int argc, char **argv, char **envp)
     free(line);
     return status;
 }
+         
