@@ -7,7 +7,7 @@
 extern char **environ;
 
 /**
- * find_command - Finds the full path of a command using PATH
+ * find_command_in_path - Finds the full path of a command using PATH
  * @command: Command to locate
  * Return: Full path (malloc’d) if found, otherwise NULL
  */
@@ -16,10 +16,9 @@ char *find_command_in_path(char *command)
     char *path_env = NULL;
     char *path_copy, *dir;
     char *fullpath;
-    int i;
 
-    /* Find PATH variable in environment */
-    for (i = 0; environ[i]; i++)
+    /* Try to get PATH from environ or getenv */
+    for (int i = 0; environ && environ[i]; i++)
     {
         if (strncmp(environ[i], "PATH=", 5) == 0)
         {
@@ -28,18 +27,14 @@ char *find_command_in_path(char *command)
         }
     }
 
-    /* If PATH not found or command includes '/', test it directly */
+    if (!path_env)
+        path_env = getenv("PATH");
+
+    /* If PATH not found or command includes '/', test directly */
     if (!path_env || strchr(command, '/'))
     {
-        fullpath = strdup(command);
-        if (!fullpath)
-        {
-            perror("strdup");
-            exit(1);
-        }
-        if (access(fullpath, X_OK) == 0)
-            return fullpath;
-        free(fullpath);
+        if (access(command, X_OK) == 0)
+            return strdup(command);
         return NULL;
     }
 
