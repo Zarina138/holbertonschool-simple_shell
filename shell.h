@@ -7,11 +7,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-/* Function prototypes */
 char *prompt_and_read(void);
 char **split_line(char *line);
-char *find_command(char *cmd, char **envp);
+char *find_command(char *cmd);
 int execute_cmd(char **argv_exec);
 
-#endif /* SHELL_H */
+
+char *_strdup(const char *s);
+
+#endif
 

@@ -52,10 +52,11 @@ int execute_cmd(char **argv_exec)
     if (!argv_exec || !argv_exec[0])
         return -1;
 
-    cmd_path = find_command(argv_exec[0], environ);
+    cmd_path = find_command(argv_exec[0]);
     if (!cmd_path)
     {
-        int len = snprintf(err_buf, sizeof(err_buf), "%s: not found\n", argv_exec[0]);
+        int len = snprintf(err_buf, sizeof(err_buf),
+                           "%s: not found\n", argv_exec[0]);
         write(STDERR_FILENO, err_buf, len);
         return 127;
     }
@@ -76,10 +77,12 @@ int execute_cmd(char **argv_exec)
         _exit(EXIT_FAILURE);
     }
     else
+    {
         waitpid(pid, &status, 0);
+    }
 
     free(cmd_path);
-    return 0;
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
 int main(void)
