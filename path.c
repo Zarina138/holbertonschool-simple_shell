@@ -14,11 +14,13 @@ extern char **environ;
 char *find_command_in_path(char *command)
 {
     char *path_env = NULL;
-    char *path_copy, *dir;
+    char *path_copy;
+    char *dir;
     char *fullpath;
+    int i;
 
     /* Try to get PATH from environ or getenv */
-    for (int i = 0; environ && environ[i]; i++)
+    for (i = 0; environ && environ[i]; i++)
     {
         if (strncmp(environ[i], "PATH=", 5) == 0)
         {
@@ -31,10 +33,18 @@ char *find_command_in_path(char *command)
         path_env = getenv("PATH");
 
     /* If PATH not found or command includes '/', test directly */
-    if (!path_env || strchr(command, '/'))
+    if (!path_env || strchr(command, '/') != NULL)
     {
         if (access(command, X_OK) == 0)
-            return strdup(command);
+        {
+            fullpath = strdup(command);
+            if (!fullpath)
+            {
+                perror("strdup");
+                exit(1);
+            }
+            return fullpath;
+        }
         return NULL;
     }
 
@@ -47,7 +57,7 @@ char *find_command_in_path(char *command)
     }
 
     dir = strtok(path_copy, ":");
-    while (dir)
+    while (dir != NULL)
     {
         fullpath = malloc(strlen(dir) + strlen(command) + 2);
         if (!fullpath)
