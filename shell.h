@@ -12,11 +12,10 @@
 
 extern char **environ;
 
-/* Function prototypes */
-char *find_command_in_path(char *cmd);
+int prompt_loop(void);
 char **split_line(char *line);
 int execute_command(char **args);
-int prompt_loop(void);
+char *find_command_in_path(char *cmd);
 
 #endif /* SHELL_H */
 

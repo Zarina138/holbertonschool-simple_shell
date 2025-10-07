@@ -1,7 +1,7 @@
 #include "shell.h"
 
 /**
- * main - entry point
+ * main - Entry point of the shell
  * Return: 0 on success
  */
 int main(void)
@@ -10,7 +10,7 @@ int main(void)
 }
 
 /**
- * prompt_loop - handles input loop
+ * prompt_loop - Repeatedly displays prompt and executes commands
  * Return: 0 on success
  */
 int prompt_loop(void)
@@ -61,77 +61,7 @@ int prompt_loop(void)
 		free(args);
 		(void)status;
 	}
-
 	free(line);
 	return (0);
-}
-
-/**
- * split_line - tokenizes a string into arguments
- * @line: command line input
- *
- * Return: pointer to array of tokens
- */
-char **split_line(char *line)
-{
-	int bufsize = 64, pos = 0;
-	char **tokens = malloc(bufsize * sizeof(char *));
-	char *token;
-
-	if (!tokens)
-		return (NULL);
-
-	token = strtok(line, " \t\r\n\a");
-	while (token)
-	{
-		tokens[pos++] = token;
-		if (pos >= bufsize)
-		{
-			bufsize += 64;
-			tokens = realloc(tokens, bufsize * sizeof(char *));
-			if (!tokens)
-				return (NULL);
-		}
-		token = strtok(NULL, " \t\r\n\a");
-	}
-	tokens[pos] = NULL;
-	return (tokens);
-}
-
-/**
- * execute_command - handles PATH search, fork, exec, wait
- * @args: argument vector
- * Return: status code
- */
-int execute_command(char **args)
-{
-	pid_t pid;
-	int status;
-	char *path;
-
-	path = find_command_in_path(args[0]);
-	if (!path)
-	{
-		fprintf(stderr, "%s: not found\n", args[0]);
-		return (-1);
-	}
-
-	pid = fork();
-	if (pid == -1)
-	{
-		perror("fork");
-		free(path);
-		return (-1);
-	}
-	if (pid == 0)
-	{
-		execve(path, args, environ);
-		perror("execve");
-		free(path);
-		_exit(127);
-	}
-	free(path);
-	waitpid(pid, &status, 0);
-	return (WIFEXITED(status) ? WEXITSTATUS(status) : -1);
 }
          
