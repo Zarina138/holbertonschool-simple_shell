@@ -3,25 +3,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/wait.h>
-
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 extern char **environ;
 
-/* prompt.c */
-void display_prompt(void);
-char *read_command(void);
-
-/* path.c */
-char *get_env_value(const char *name);
+/* Function prototypes */
 char *find_command_in_path(const char *command);
-
-/* execute.c */
 int execute_command(char **args, char *shell_name);
 
-/* utils.c */
-char **split_line(char *line);
+char **parse_input(char *input);
 void free_args(char **args);
+void display_prompt(void);
+char *read_command(void);
+char **split_line(char *line);
 
-#endif
+#endif /* SHELL_H */
