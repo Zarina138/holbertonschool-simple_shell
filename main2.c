@@ -64,4 +64,3 @@ int prompt_loop(void)
 	free(line);
 	return (0);
 }
-         

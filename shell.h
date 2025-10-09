@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <stddef.h>
 
 extern char **environ;
 
@@ -17,5 +18,4 @@ char **split_line(char *line);
 int execute_command(char **args);
 char *find_command_in_path(char *cmd);
 
-#endif /* SHELL_H */
-
+#endif

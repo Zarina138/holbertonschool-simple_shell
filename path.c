@@ -10,7 +10,10 @@ char *find_command_in_path(char *command)
 	char *path_env, *path_copy, *dir, *fullpath;
 
 	path_env = getenv("PATH");
-	if (!path_env || strchr(command, '/') != NULL)
+	if (!path_env)
+		path_env = "/bin:/usr/bin"; /* Default PATH if not set */
+
+	if (strchr(command, '/') != NULL)
 	{
 		if (access(command, X_OK) == 0)
 			return (strdup(command));
@@ -47,4 +50,3 @@ char *find_command_in_path(char *command)
 	free(path_copy);
 	return (NULL);
 }
-

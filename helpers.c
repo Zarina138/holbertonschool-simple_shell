@@ -58,6 +58,7 @@ int execute_command(char **args)
 	}
 	if (pid == 0)
 	{
+		extern char **environ;
 		execve(path, args, environ);
 		perror("execve");
 		free(path);
@@ -67,4 +68,3 @@ int execute_command(char **args)
 	waitpid(pid, &status, 0);
 	return (WIFEXITED(status) ? WEXITSTATUS(status) : -1);
 }
-
