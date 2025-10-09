@@ -1,70 +1,87 @@
 #include "shell.h"
 
 /**
- * split_line - Tokenizes a string into arguments
- * @line: Command line input
- * Return: Pointer to array of tokens
+ * execute_command - Runs a command entered by the user
+ * @args: Command and its arguments
+ * @shell_name: Name of the shell (argv[0])
+ * Return: 0 if "exit", 1 otherwise
  */
-char **split_line(char *line)
+int execute_command(char **args, char *shell_name)
 {
-	int bufsize = 64, pos = 0;
-	char **tokens = malloc(bufsize * sizeof(char *));
-	char *token;
+    pid_t pid;
+    int status;
+    char *cmd_path;
 
-	if (!tokens)
-		return (NULL);
+    if (!args || !args[0])
+        return (1);
 
-	token = strtok(line, " \t\r\n\a");
-	while (token)
-	{
-		tokens[pos++] = token;
-		if (pos >= bufsize)
-		{
-			bufsize += 64;
-			tokens = realloc(tokens, bufsize * sizeof(char *));
-			if (!tokens)
-				return (NULL);
-		}
-		token = strtok(NULL, " \t\r\n\a");
-	}
-	tokens[pos] = NULL;
-	return (tokens);
+    /* Built-in command: exit */
+    if (strcmp(args[0], "exit") == 0)
+        return (0);
+
+    /* Search in PATH */
+    cmd_path = find_command_in_path(args[0]);
+    if (!cmd_path)
+    {
+        /* ✅ Əmr tapılmadıqda xəta mesajı */
+        dprintf(STDERR_FILENO, "%s: 1: %s: not found\n", shell_name, args[0]);
+        return (1);
+    }
+
+    /* Create child process */
+    pid = fork();
+    if (pid == 0)
+    {
+        if (execve(cmd_path, args, environ) == -1)
+        {
+            perror(shell_name);
+            exit(EXIT_FAILURE);
+        }
+    }
+    else if (pid < 0)
+    {
+        perror("fork");
+    }
+    else
+    {
+        waitpid(pid, &status, 0);
+    }
+
+    free(cmd_path);
+    return (1);
 }
 
 /**
- * execute_command - Executes a command using PATH, fork, execve
- * @args: Argument vector
- * Return: Status code
+ * find_command_in_path - Finds command full path in PATH
+ * @command: Command name
+ * Return: Full path string or NULL if not found
  */
-int execute_command(char **args)
+char *find_command_in_path(char *command)
 {
-	pid_t pid;
-	int status;
-	char *path;
+    char *path_env, *path_copy, *token, full_path[1024];
+    struct stat st;
 
-	path = find_command_in_path(args[0]);
-	if (!path)
-	{
-		fprintf(stderr, "./hsh: %s: not found\n", args[0]);
-		return (-1);
-	}
+    if (strchr(command, '/'))
+        return (access(command, X_OK) == 0 ? strdup(command) : NULL);
 
-	pid = fork();
-	if (pid == -1)
-	{
-		perror("fork");
-		free(path);
-		return (-1);
-	}
-	if (pid == 0)
-	{
-		extern char **environ;
-		execve(path, args, environ);
-		perror("execve");
-		free(path);
-		_exit(127);
-	}
-	free(path);
-	waitpid(pid, &status, 0);
-	return (WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+    path_env = getenv("PATH");
+    if (!path_env)
+        return (NULL);
+
+    path_copy = strdup(path_env);
+    token = strtok(path_copy, ":");
+
+    while (token)
+    {
+        snprintf(full_path, sizeof(full_path), "%s/%s", token, command);
+        if (stat(full_path, &st) == 0 && (st.st_mode & S_IXUSR))
+        {
+            free(path_copy);
+            return (strdup(full_path));
+        }
+        token = strtok(NULL, ":");
+    }
+
+    free(path_copy);
+    return (NULL);
 }
