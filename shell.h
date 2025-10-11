@@ -6,16 +6,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <errno.h>
-
+#include <sys/stat.h>
 extern char **environ;
 
-/* Functions */
-char *get_env_value(const char *name);
-char *find_command_in_path(char *command);
+char *find_command_in_path(const char *command);
 int execute_command(char **args, char *shell_name);
-char *read_line(void);
+
+char **parse_input(char *input);
+void free_args(char **args);
+void display_prompt(void);
+char *read_command(void);
 char **split_line(char *line);
 
 #endif
