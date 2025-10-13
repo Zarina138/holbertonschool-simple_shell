@@ -1,43 +1,100 @@
 #include "main.h"
 
 /**
- * main - simple shell 0.2+
- * Return: 0 on success
+ * parse_command - func for parsing command
+ * @u_command: command to be parsed
+ * @args: arguments to command
  */
-int main(void)
+void parse_command(char *u_command, char **args)
 {
-    char *line = NULL, *args[64];
-    ssize_t nread;
-    size_t len = 0;
-    int status = 1;
+	char *command = strtok(u_command, " \t");
+	int i = 0;
 
-    while (1)
-    {
-        if (isatty(STDIN_FILENO))
-            write(STDOUT_FILENO, "$ ", 2);
+	args[0] = NULL;
+	while (command != NULL && i < MAX_LEN - 1)
+	{
+		args[i] = command;
+		i++;
+		command = strtok(NULL, " \t");
+	}
+	args[i] = NULL;
+}
 
-        nread = getline(&line, &len, stdin);
-        if (nread == -1)
-        {
-            free(line);
-            break;
-        }
+/**
+ * process_commands - commands processor func
+ * @commands: commands
+ * @commands_array: array for all commands
+ */
+void process_commands(char *commands, char **commands_array)
+{
+	char *command;
+	int a = 0;
 
-        if (line[nread - 1] == '\n')
-            line[nread - 1] = '\0';
+	command = strtok(commands, "\n");
+	while (command != NULL)
+	{
+		commands_array[a] = command;
+		command = strtok(NULL, "\n");
+		a++;
+	}
+	commands_array[a] = NULL;
+}
 
-        if (tokenize(line, args) == 0)
-            continue;
+/**
+ * handle_commands_array - func for handling array of commands
+ * @commands_array: array of commands
+ */
+void handle_commands_array(char **commands_array)
+{
+	int a = 0;
+	char *command;
 
-        
-        if (strcmp(args[0], "exit") == 0)
-        {
-            free(line);
-            break;
-        }
+	if (strcmp(commands_array[a], "exit") == 0)
+		exit(0);
+	else if (strcmp(commands_array[a], "env") == 0)
+		print_env();
+	else
+		while (commands_array[a] != NULL)
+		{
+			command = commands_array[a];
+			if (strcmp(command, "exit") == 0 && a > 0)
+				exit(2);
+			handle_command(command);
+			a++;
+		}
+}
 
-        status = execute(args);
-    }
+/**
+ * handle_path - func for handling path
+ * @args: arguments to path
+ * @path: path
+ * @path_env: environment path
+ * @found: int variable
+ */
+void handle_path(char **args, char **path, char **path_env, int *found)
+{
+	char *path_token = NULL;
 
-    return (status);
+	if (*path_env == NULL)
+	{
+		fprintf(stderr, "./hsh: 1: %s: not found\n", args[0]);
+		free(*path_env);
+		free(*path);
+		exit(127);
+	}
+	path_token = strtok(*path_env, ":");
+
+	while (path_token != NULL)
+	{
+		strcpy(*path, path_token);
+		strcat(*path, "/");
+		strcat(*path, args[0]);
+		if (access(*path, X_OK) != -1)
+		{
+			*found = 1;
+			break;
+		}
+		path_token = strtok(NULL, ":");
+	}
+	free(*path_env);
 }
