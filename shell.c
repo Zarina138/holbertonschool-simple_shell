@@ -29,9 +29,15 @@ int main(void)
         if (tokenize(line, args) == 0)
             continue;
 
+        
+        if (strcmp(args[0], "exit") == 0)
+        {
+            free(line);
+            break;
+        }
+
         status = execute(args);
     }
 
     return (status);
 }
-
